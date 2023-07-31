@@ -9,10 +9,6 @@ import (
 	"os"
 )
 
-type aiClient struct {
-	apiKey string
-}
-
 func main() {
 	apiKey := os.Getenv("OPENAI_API_KEY")
 	if apiKey == "" {

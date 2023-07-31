@@ -1,0 +1,52 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  width: 100%;
+}
+
+.app-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  height: 100vh;
+  width: 100vw;
+  overflow-y: hidden;
+}
+
+.header-container {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 10px;
+}
+
+.header-right {
+  display: flex;
+
+}
+
+input {
+  border: 0;
+  border-bottom: 1px solid white;
+  padding: 16px;
+  background-color: transparent;
+  font-size: 22px;
+  width: auto;
+}
+
+input:focus,
+button {
+  outline: 0;
+}
+
+.button-clean {
+  background: transparent;
+  color: white;
+  padding: 16px;
+  vertical-align: middle;
+}
