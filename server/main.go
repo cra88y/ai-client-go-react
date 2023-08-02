@@ -21,12 +21,11 @@ func main() {
 		AllowOrigins: "*",
 	}))
 	app.Post("/ai", func(c *fiber.Ctx) error {
-		log.Printf("/ai POST")
+		log.Print(c)
 		var reqBody CompletionRequest
 		if err := c.BodyParser(&reqBody); err != nil {
 			return err
 		}
-		log.Print(reqBody)
 		client := openai.NewClient(reqBody.ApiKey)
 		resp := getCompletion(client, reqBody.Messages)
 		return c.JSON(resp)
