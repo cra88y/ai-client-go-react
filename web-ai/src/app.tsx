@@ -9,8 +9,7 @@ interface UserContext {
   apiKey: string;
   setApiKey: Function;
 }
-const emptyUserContext = {} as UserContext;
-export const UserContext = createContext(emptyUserContext);
+export const UserContext = createContext({} as UserContext);
 export const UserProvider: FunctionComponent = ({children}) => {
   const [apiKey, setApiKey] = useState("")
   return (<UserContext.Provider value = {{apiKey, setApiKey}}>
@@ -70,7 +69,6 @@ interface ResponseObject {
 
 function useAi() {
   const { apiKey } = useContext(UserContext);
-  // const [messages, setMessages] = useState<ResponseObject[]>([]); 
   const [messages, setMessages] = useState<Message[]>([]);
   const aiQuery = (inputText: string) => {
     const message: Message = {
@@ -87,10 +85,8 @@ function useAi() {
       "Content-Type": "application/json"
     }})
     .then ((response) => {
-      console.log(response)
       const data: ResponseObject = response.data;
-      const { choices } = data;
-      const message = choices[0].message;
+      const message = data.choices[0].message;
       setMessages([...allMessages, {Role: message.role, Content: message.content}]);
     })
     .catch(err => console.log(err))
