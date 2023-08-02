@@ -29,11 +29,11 @@ func main() {
 		log.Print(reqBody)
 		client := openai.NewClient(reqBody.ApiKey)
 		resp := getCompletion(client, reqBody.Input)
-		response := map[string]interface{}{
-			"message": "Success",
-			"data":    resp,
-		}
-		return c.JSON(response)
+		// response := map[string]interface{}{
+		// 	"message": "Success",
+		// 	"data":    resp,
+		// }
+		return c.JSON(resp)
 	})
 
 	app.Listen(":3000")
@@ -52,7 +52,7 @@ func getCompletion(client *openai.Client, inp string) openai.ChatCompletionRespo
 		},
 	)
 	if err != nil {
-		log.Fatalf("Error: getCompletion()\n%v\n", err)
+		log.Printf("Error: getCompletion()\n%v\n", err)
 	}
 	return resp
 }

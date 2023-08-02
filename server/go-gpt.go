@@ -1,4 +1,4 @@
-package main
+package gogpt
 
 import (
 	"bufio"
@@ -9,7 +9,7 @@ import (
 	"os"
 )
 
-func main() {
+func gogpt() {
 	apiKey := os.Getenv("OPENAI_API_KEY")
 	if apiKey == "" {
 		fmt.Println("Error: OPENAI_API_KEY environment variable is not set")
@@ -23,12 +23,12 @@ func main() {
 		if err != nil {
 			log.Fatalf("Error: Failed to read input: %v", err)
 		}
-		resp := getCompletion(client, inp)
+		resp := getCompletionn(client, inp)
 		fmt.Println("AI: ", resp.Choices[0].Message.Content, "\n")
 	}
 }
 
-func getCompletion(client *openai.Client, inp string) openai.ChatCompletionResponse {
+func getCompletionn(client *openai.Client, inp string) openai.ChatCompletionResponse {
 	resp, err := client.CreateChatCompletion(
 		context.Background(),
 		openai.ChatCompletionRequest{

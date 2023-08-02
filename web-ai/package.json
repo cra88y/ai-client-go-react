@@ -10,7 +10,9 @@
   },
   "dependencies": {
     "axios": "^1.4.0",
-    "preact": "^10.16.0"
+    "preact": "^10.16.0",
+    "preact-router": "^4.1.2",
+    "react-cookie": "^4.1.1"
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.5.0",
