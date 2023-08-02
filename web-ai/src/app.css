@@ -16,7 +16,6 @@ body {
   height: 100vh;
   overflow-y: auto;
   width: 98vw;
-  overflow-y: hidden;
 }
 
 .header-container {

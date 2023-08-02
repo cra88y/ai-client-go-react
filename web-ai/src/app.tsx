@@ -46,17 +46,15 @@ interface Message {
   Content: string;
 }
 
-interface MessageImproper {
-  role: string;
-  content: string;
-}
-
 interface ResponseObject {
   choices: {
     [index: number]: {
       finish_reason: string;
       index: number;
-      message: MessageImproper;
+      message: {
+        role: string;
+        content: string;
+      };
     };
   };
   created: number;
