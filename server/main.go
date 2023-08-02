@@ -9,8 +9,8 @@ import (
 )
 
 type CompletionRequest struct {
-	ApiKey string `json:"apiKey"`
-	Input  string `json:"input"`
+	ApiKey   string                         `json:"apiKey"`
+	Messages []openai.ChatCompletionMessage `json:"messages"`
 }
 type CompletionResponse struct {
 }
@@ -28,27 +28,18 @@ func main() {
 		}
 		log.Print(reqBody)
 		client := openai.NewClient(reqBody.ApiKey)
-		resp := getCompletion(client, reqBody.Input)
-		// response := map[string]interface{}{
-		// 	"message": "Success",
-		// 	"data":    resp,
-		// }
+		resp := getCompletion(client, reqBody.Messages)
 		return c.JSON(resp)
 	})
 
 	app.Listen(":3000")
 }
-func getCompletion(client *openai.Client, inp string) openai.ChatCompletionResponse {
+func getCompletion(client *openai.Client, messages []openai.ChatCompletionMessage) openai.ChatCompletionResponse {
 	resp, err := client.CreateChatCompletion(
 		context.Background(),
 		openai.ChatCompletionRequest{
-			Model: openai.GPT3Dot5Turbo,
-			Messages: []openai.ChatCompletionMessage{
-				{
-					Role:    openai.ChatMessageRoleUser,
-					Content: inp,
-				},
-			},
+			Model:    openai.GPT3Dot5Turbo,
+			Messages: messages,
 		},
 	)
 	if err != nil {

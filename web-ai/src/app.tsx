@@ -42,17 +42,21 @@ function Header(){
   )
 }
 interface Message {
+  Role: string;
+  Content: string;
+}
+
+interface MessageImproper {
   role: string;
   content: string;
 }
 
 interface ResponseObject {
-  prompt: string;
   choices: {
     [index: number]: {
       finish_reason: string;
       index: number;
-      message: Message;
+      message: MessageImproper;
     };
   };
   created: number;
@@ -66,42 +70,60 @@ interface ResponseObject {
   };
 }
 
-function Home() {
-  const { apiKey } = useContext<any>(UserContext);
-  const [inputText, setInputText] = useState('');
-  const [messages, setMessages] = useState<ResponseObject[]>([]); 
-  
-  const handleClick = () => {
-    const prompt = inputText;
-    setInputText('');
+function useAi() {
+  const { apiKey } = useContext(UserContext);
+  // const [messages, setMessages] = useState<ResponseObject[]>([]); 
+  const [messages, setMessages] = useState<Message[]>([]);
+  const aiQuery = (inputText: string) => {
+    const message: Message = {
+      Role: "user",
+      Content: inputText
+    }
+    const allMessages = [...messages, message];
+    setMessages(allMessages)
     axios.post("http://127.0.0.1:3000/ai", {
       apiKey,
-      input: prompt
+      messages: allMessages
     },
     {headers: {
       "Content-Type": "application/json"
     }})
     .then ((response) => {
-      const data: ResponseObject = {
-        prompt,
-        ...response.data
-      };
-      setMessages(prev =>[data, ...prev]);
+      console.log(response)
+      const data: ResponseObject = response.data;
+      const { choices } = data;
+      const message = choices[0].message;
+      setMessages([...allMessages, {Role: message.role, Content: message.content}]);
     })
     .catch(err => console.log(err))
   };
+  return {
+    messages,
+    aiQuery
+  }
+}
+
+function QueryBox({setThreadMessages}: {setThreadMessages: Function}) {
+  const {
+    messages,
+    aiQuery
+  } = useAi();
+  const [inputText, setInputText] = useState('');
+  useEffect(()=> setThreadMessages(messages), [messages])
+  const aiQueryHelper = ()=> {
+    aiQuery(inputText);
+    setInputText("");
+  }
   const handleKeyDown = (e: KeyboardEvent) => {
     if(e.key == "Enter"){
-      setTimeout(()=> handleClick(), 0);
+      setTimeout(()=> aiQueryHelper(), 0);
     }
     else if(e.target instanceof HTMLInputElement){
       setInputText(e.target.value);
     }
   }
   return (
-    <div className="chat-container">
-      <Thread messages={messages}/>
-      <div className="center-div">
+    <div className="message-box">
       <input
         className="prompt-input"
         onKeyUp={handleKeyDown}
@@ -109,26 +131,32 @@ function Home() {
         placeholder="Ask Anything..."
         value={inputText}
       />
-      <button onClick={handleClick} className="button-clean">{">"}</button>
-      </div>
+      <button onClick={aiQueryHelper} className="button-clean">{">"}</button>
     </div>
   )
 }
-interface Props {
-  messages: ResponseObject[]
+interface ThreadProps {
+  messages: Message[]
 }
-function Thread ({messages}: Props) {
+function Thread ({messages}: ThreadProps) {
   return (<div className="thread-messages"> {
     messages && messages.map(msg=>{
-      const content = msg.choices[0].message.content;
-      const prompt = msg.prompt;
+      const role = msg.Role;
+      const content = msg.Content;
       // const author = msg.choices[0].message.role;
       return (
         <div className="thread-message-container">
-          <div className="thread-message">You: {prompt}</div>
-          <div className="thread-message">orpheus: {content}</div>
+          <div className="thread-message">{role}: {content}</div>
         </div>)
     })}
+  </div>)
+}
+
+function Home() {
+  const [messages, setMessages] = useState<Message[]>([]);
+  return (<div className="chat-container">
+  <Thread messages={messages}/>
+  <QueryBox setThreadMessages={setMessages}/>
   </div>)
 }
 
