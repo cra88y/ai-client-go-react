@@ -1,4 +1,5 @@
-Under Development AI Client+Server
+Under Development
+# AI Client+Server
 
 This project implements a multi-layer AI answer flow allowing confirgurable "layers" that adapt the way the language model will respond to your prompt. 
 Layers:
