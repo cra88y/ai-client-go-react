@@ -10,6 +10,15 @@ interface UserContext {
   apiKey: string;
   setApiKey: Function;
 }
+interface LayerOptions {
+	specifyPrompt        :boolean;
+	generateSearchTerm   :boolean;
+	search               :boolean;
+	searchResultsCount   :number;
+	processSearchResults :boolean;
+	maxResponseTokens    :number;
+}
+
 export const UserContext = createContext({} as UserContext);
 export const UserProvider: FunctionComponent = ({children}) => {
   const [apiKey, setApiKey] = useState("")
@@ -71,16 +80,18 @@ interface ResponseObject {
 function useAi() {
   const { apiKey } = useContext(UserContext);
   const [messages, setMessages] = useState<Message[]>([]);
-  const aiQuery = (inputText: string) => {
+  const aiQuery = (inputText: string, options: LayerOptions) => {
     const message: Message = {
       Role: "user",
       Content: inputText
     }
     const allMessages = [...messages, message];
     setMessages(allMessages)
+    console.log(options)
     axios.post("http://127.0.0.1:3000/ai", {
       apiKey,
-      messages: allMessages
+      messages: allMessages,
+      layerOptions: options
     },
     {headers: {
       "Content-Type": "application/json"
@@ -104,9 +115,17 @@ function QueryBox({setThreadMessages}: {setThreadMessages: Function}) {
     aiQuery
   } = useAi();
   const [inputText, setInputText] = useState('');
+  const [options, setOptions] = useState({
+    specifyPrompt: true,
+    search: true,
+    generateSearchTerm: true,
+    searchResultsCount: 6,
+    processSearchResults: false,
+    maxResponseTokens: 500,
+  } as LayerOptions) 
   useEffect(()=> setThreadMessages(messages), [messages])
   const aiQueryHelper = ()=> {
-    aiQuery(inputText);
+    aiQuery(inputText, options);
     setInputText("");
   }
   const handleKeyDown = (e: KeyboardEvent) => {
@@ -117,17 +136,90 @@ function QueryBox({setThreadMessages}: {setThreadMessages: Function}) {
       setInputText(e.target.value);
     }
   }
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
+  if (e.target == null) return
+  const { name, value, type, checked } = e.target as HTMLInputElement;
+  const newValue = type === 'checkbox' ? checked : value;
+
+  setOptions((prevOptions) => ({
+    ...prevOptions,
+    [name]: newValue,
+  }));
+  };
   return (
-    <div className="message-box">
-      <input
-        className="prompt-input"
-        onKeyUp={handleKeyDown}
-        type="text"
-        placeholder="Ask Anything..."
-        value={inputText}
-      />
-      <button onClick={aiQueryHelper} className="button-clean">{">"}</button>
-    </div>
+    <>
+      <div className="message-box">
+        <input
+          className="prompt-input"
+          onKeyUp={handleKeyDown}
+          type="text"
+          placeholder="Ask Anything..."
+          value={inputText}
+        />
+        <button onClick={aiQueryHelper} className="button-clean">{">"}</button>
+      </div>
+      <div className="message-options">
+        <label>
+          Specify Prompt:
+          <input
+            type="checkbox"
+            name="specifyPrompt"
+            checked={options.specifyPrompt}
+            onChange={handleInputChange}
+          />
+        </label>
+        <br/>
+        <label>
+          Search:
+          <input
+            type="checkbox"
+            name="search"
+            checked={options.search}
+            onChange={handleInputChange}
+          />
+        </label>
+        <br/>
+        <label>
+          Generate Search Query:
+          <input
+            type="checkbox"
+            name="generateSearchTerm"
+            checked={options.generateSearchTerm}
+            onChange={handleInputChange}
+          />
+        </label>
+        <br />
+        <label>
+          Process Search Results:
+          <input
+            type="checkbox"
+            name="processSearchResults"
+            checked={options.processSearchResults}
+            onChange={handleInputChange}
+          />
+        </label>
+        <br />
+        <label>
+          Search Results Count:
+          <input
+            type="number"
+            name="searchResultsCount"
+            value={options.searchResultsCount}
+            onChange={handleInputChange}
+          />
+        </label>
+        <br />
+        <label>
+          Max Response Tokens:
+          <input
+            type="number"
+            name="maxResponseTokens"
+            value={options.maxResponseTokens}
+            onChange={handleInputChange}
+          />
+        </label>
+      </div>
+    </>
   )
 }
 interface ThreadProps {
