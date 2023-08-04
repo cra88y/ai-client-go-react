@@ -4,6 +4,7 @@ import './app.css'
 import axios from 'axios';
 import { ChangeEvent } from 'preact/compat';
 import { useCookies } from 'react-cookie';
+import { ReactMarkdown } from 'react-markdown/lib/react-markdown';
 
 interface UserContext {
   apiKey: string;
@@ -137,10 +138,9 @@ function Thread ({messages}: ThreadProps) {
     messages && messages.map(msg=>{
       const role = msg.Role;
       const content = msg.Content;
-      // const author = msg.choices[0].message.role;
       return (
         <div className="thread-message-container">
-          <div className="thread-message">{role}: {content}</div>
+          <ReactMarkdown className="thread-message">{role + ": " +content}</ReactMarkdown>
         </div>)
     })}
   </div>)

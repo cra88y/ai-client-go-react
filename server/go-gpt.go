@@ -1,4 +1,4 @@
-package gogpt
+package main
 
 import (
 	"bufio"
