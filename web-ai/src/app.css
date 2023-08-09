@@ -29,13 +29,58 @@ body {
   display: flex;
 }
 
+.panel-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  font-size: 16px;
+}
+
+.panel-container {
+  height: 100%;
+  width: 40%;
+  max-width: 200px;
+  display: flex;
+  flex-direction: column;
+  background-color: #323232;
+  padding: 16px;
+}
+
 .prompt-input {
   width: 100%;
-  border: 0;
-  border-bottom: 1px solid white;
-  padding: 16px;
+  border: 3px solid #222222;
+  outline-color: #323232;
+  outline-width: 8px;
+  outline-style: solid;
+  border-radius: 99px;
+  padding: 0 8px;
+  background-color: #323232;
+  margin: 24px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.prompt-input>input {
   background-color: transparent;
-  font-size: 22px;
+  font-size: 16px;
+
+}
+
+.prompt-input>input::placeholder {
+  color: #f2f2f2;
+}
+
+.prompt-input:focus {
+  outline-color: #323232;
+  outline-width: 8px;
+  outline-style: solid;
+}
+
+input {
+  color: #f2f2f2;
+  border-radius: 20px;
+  padding: 4px;
+  border: 0;
 }
 
 input:focus,
@@ -54,7 +99,18 @@ button {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: end;
+  height: 100%;
   width: 80%;
+  max-width: 800px
+}
+
+.client-container {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  justify-content: start;
+  align-items: end;
 }
 
 .message-box {
@@ -64,12 +120,24 @@ button {
   width: 100%;
 }
 
+.message-options {
+  width: 100%;
+  padding: 0 32px;
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.message-options>label {
+  flex-basis: 50%;
+}
+
 .thread-messages {
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: flex-start;
-  width: 100%;
+  width: 90%;
+
 }
 
 .thread-message-container {
@@ -77,11 +145,19 @@ button {
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
-  max-width: auto;
+  max-width: 100%;
 }
 
 .thread-message {
-  margin-bottom: 10px;
+  margin-bottom: 12px;
+  background-color: #202020;
+  border-radius: 8px;
+  padding: 12px;
+  width: 100%;
+  word-wrap: break-word;
 }
 
-.thread-message-author {}
+.thread-message-author {
+  font-size: 20px;
+  margin-left: 10px;
+}

@@ -1,15 +1,11 @@
 import { useState, useContext, useEffect } from 'preact/hooks'
 import { FunctionComponent, createContext } from 'preact';
 import './app.css'
+import Router, {Route, route} from 'preact-router';
 import axios from 'axios';
-import { ChangeEvent } from 'preact/compat';
 import { useCookies } from 'react-cookie';
-import { ReactMarkdown } from 'react-markdown/lib/react-markdown';
-
-interface UserContext {
-  apiKey: string;
-  setApiKey: Function;
-}
+import Markdown from 'preact-markdown';
+import { ChangeEvent } from 'preact/compat';
 interface LayerOptions {
 	specifyPrompt        :boolean;
 	generateSearchTerm   :boolean;
@@ -19,10 +15,34 @@ interface LayerOptions {
 	maxResponseTokens    :number;
 }
 
+interface UserContext {
+  apiKey: string;
+  setApiKey: Function;
+  threads: {[index: number]: Message[]};
+  setThreads: Function;
+  currThread: number;
+  setCurrThread: Function;
+}
 export const UserContext = createContext({} as UserContext);
 export const UserProvider: FunctionComponent = ({children}) => {
   const [apiKey, setApiKey] = useState("")
-  return (<UserContext.Provider value = {{apiKey, setApiKey}}>
+  const [threads, setThreads] = useState<UserContext["threads"]>({} as UserContext["threads"])
+  const [currThread, setCurrThread] = useState(0);
+  const [cookies, setCookies] = useCookies(['threads'])
+  useEffect(() => {
+    setCookies('threads', threads, { path: '/' });
+  }, [threads[currThread]]);
+  useEffect(()=>{
+   setThreads(cookies.threads)
+  }, [])
+  return (<UserContext.Provider value = {{
+    apiKey,
+    setApiKey,
+    threads,
+    setThreads,
+    currThread,
+    setCurrThread,
+  }}>
     {children}
   </UserContext.Provider>)
 }
@@ -31,25 +51,35 @@ export function App() {
   return (
     <div className="app-container">
       <UserProvider>
-        <Header/>
-        <Home/>
+        <div className="client-container">
+        <ThreadsPanel />
+          <Router>
+            <Route path="/" component={Home}/>
+            <Route path="/threads/:id" component={Home} />
+          </Router>
+        </div>
         <Footer/>
       </UserProvider>
     </div>
   )
 }
 
-function Header(){
-  return (
-    <div className="header-container">
-      <div>orpheus</div>
-      <div className="header-right">
-         <div>Login</div>
-         <div>Sign-Up</div> 
-      </div>
-    </div>
-  )
+export function ThreadsPanel(){
+  const {threads} = useContext(UserContext)
+  return (<div className="panel-container">
+    <div className="panel-header">Threads</div>
+    <a href="/">+ New Thread</a>
+    {Object.keys(threads).map(threadKey =>{
+      const thread = threads[Number(threadKey)]
+      return (
+        <div className="thread-title" key={threadKey}>
+          <a href={`/threads/${threadKey}`}>{thread[0].Content.slice(0, 50)}</a>
+        </div>
+      )
+    })}
+    </div>)
 }
+
 interface Message {
   Role: string;
   Content: string;
@@ -78,40 +108,33 @@ interface ResponseObject {
 }
 
 function useAi() {
-  const { apiKey } = useContext(UserContext);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const aiQuery = (inputText: string, options: LayerOptions) => {
-    const message: Message = {
-      Role: "user",
-      Content: inputText
-    }
-    const allMessages = [...messages, message];
-    setMessages(allMessages)
-    console.log(options)
-    axios.post("http://127.0.0.1:3000/ai", {
-      apiKey,
-      messages: allMessages,
-      layerOptions: options
-    },
-    {headers: {
-      "Content-Type": "application/json"
-    }})
-    .then ((response) => {
+  const { apiKey, threads, currThread, setThreads } = useContext(UserContext);
+  const aiQuery = async (options: LayerOptions) => {
+    try {
+      const response = await axios.post("http://127.0.0.1:3000/ai", {
+        apiKey,
+        messages: threads[currThread],
+        layerOptions: options
+      },
+      {headers: {
+        "Content-Type": "application/json"
+      }})
       const data: ResponseObject = response.data;
       const message = data.choices[0].message;
-      setMessages([...allMessages, {Role: message.role, Content: message.content}]);
-    })
-    .catch(err => console.log(err))
+      setThreads({...threads, [currThread]: [...threads[currThread], {Role: message.role, Content: message.content}]})
+    }
+    catch(err) {
+      console.log(err)
+    }
+    
   };
   return {
-    messages,
     aiQuery
   }
 }
 
-function QueryBox({setThreadMessages}: {setThreadMessages: Function}) {
+function QueryBox() {
   const {
-    messages,
     aiQuery
   } = useAi();
   const [inputText, setInputText] = useState('');
@@ -123,14 +146,36 @@ function QueryBox({setThreadMessages}: {setThreadMessages: Function}) {
     processSearchResults: false,
     maxResponseTokens: 500,
   } as LayerOptions) 
-  useEffect(()=> setThreadMessages(messages), [messages])
-  const aiQueryHelper = ()=> {
-    aiQuery(inputText, options);
-    setInputText("");
+  const { threads, currThread, setThreads } = useContext(UserContext);
+  useEffect(()=> {
+    if (!threads[currThread]) return
+    if(threads[currThread][threads[currThread].length - 1].Role != "user") return
+    aiQuery(options)}
+  , [threads[currThread]])
+  
+  const submitMsg = ()=>{
+    let id = currThread
+    if(currThread == undefined){
+      const numThreads = Object.keys(threads).length
+      id = threads ? numThreads : 0
+      route("/threads/" + id)
+    }
+    const message = {
+      Role: "user",
+      Content: inputText,
+    }
+    var thread: Message[]
+    if(threads[currThread])
+      thread = [...threads[id], message]
+    else
+      thread = [message]
+    setThreads({...threads, [id]: thread})
+    setInputText("")
   }
+  
   const handleKeyDown = (e: KeyboardEvent) => {
     if(e.key == "Enter"){
-      setTimeout(()=> aiQueryHelper(), 0);
+      setTimeout(()=> submitMsg(), 0);
     }
     else if(e.target instanceof HTMLInputElement){
       setInputText(e.target.value);
@@ -149,14 +194,15 @@ function QueryBox({setThreadMessages}: {setThreadMessages: Function}) {
   return (
     <>
       <div className="message-box">
+        <div className="prompt-input">
         <input
-          className="prompt-input"
           onKeyUp={handleKeyDown}
           type="text"
           placeholder="Ask Anything..."
           value={inputText}
         />
-        <button onClick={aiQueryHelper} className="button-clean">{">"}</button>
+        <button onClick={submitMsg} className="button-clean">{">"}</button>
+        </div>
       </div>
       <div className="message-options">
         <label>
@@ -232,17 +278,23 @@ function Thread ({messages}: ThreadProps) {
       const content = msg.Content;
       return (
         <div className="thread-message-container">
-          <ReactMarkdown className="thread-message">{role + ": " +content}</ReactMarkdown>
+          <div className="thread-message-author">{role} </div>
+          <div className="thread-message">
+          <Markdown markdown={content}/>
+          </div>
         </div>)
     })}
   </div>)
 }
 
-function Home() {
-  const [messages, setMessages] = useState<Message[]>([]);
+function Home({id}: {id: number}) {
+  const {setCurrThread, currThread, threads} = useContext(UserContext);
+  useEffect(()=>{
+    setCurrThread(id)
+  }, [id])
   return (<div className="chat-container">
-  <Thread messages={messages}/>
-  <QueryBox setThreadMessages={setMessages}/>
+  <Thread messages={threads[currThread]}/>
+  <QueryBox />
   </div>)
 }
 

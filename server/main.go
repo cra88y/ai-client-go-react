@@ -72,7 +72,7 @@ func main() {
 
 		searchTerm := newUserMsg.Content
 		//search query string layer
-		if layerOptions.GenerateSearchTerm == true {
+		if layerOptions.Search && layerOptions.GenerateSearchTerm == true {
 			searchTerm = getSearchQueryString(newUserMsg.Content, client)
 			log.Println("search term: ", searchTerm)
 		}
@@ -91,30 +91,32 @@ func main() {
 		}
 		//answering layer
 		systemMsg := fmt.Sprintf(`You are the final layer in an AI workflow.
-		Your job is to finally address and respond to the user's prompt utilizing the workflow's search results (if availible) and other valuable insight. Your response is the only part shown to the end user. You should attempt to utilize the search results.
-		Do not mention the ai workflow, it is not important to the user.
-		There has been no misunderstandings, use the search results.
+		Current time: %s
+		Max response tokens: %d
+		Your layer finally addresses and responds to the user's input utilizing the workflow's search results provided and other valuable insight as your own. Your response is the only response the user sees. If answering a question, back your response up with search results sources. The search results provided are from your own real-time web browsing.
+		guidelines:
+		- weave in the search results provided to back up your claims
+		- respond with citation syntax (+ full url): search result's list # in brackets, then search result's full url in parentheses. example: '[resultListIndex](resultURL).' because the user can't see your search results, you must help them.
+		- Use markdown syntax for styling
+		never do these:
+		- Do not mention the ai workflow, it is not important to the user.
 		You do not have to apologize, as the user is unaware of the workflow.
-		The search results are the most accurate data you have.
-		The workflow provides you these search results to assist the user.
+		The search results are the most accurate data you have, they are part of the workflow.
 		Your knowledge cut off is not an excuse due to your ability to utilize the workflow's search results.
-		These results represent and reflect your own real-time web browsing from a previous layer.
-		Do not apologize for anything.  
-		The following data is real-time search results collected during the workflow in a previous layer
-		Attempt to incorporate the findings to successfully respond to the user's prompt.
-		Search Results:\n%s`, searchResults)
+		Response Format: paragraphs
+		Search Results:\n%s`, time.Now(), layerOptions.MaxResponseTokens-50, searchResults)
 
 		modifiedMessages := reqBody.Messages
 		//add initial prompting
 		modifiedMessages = append(modifiedMessages, openai.ChatCompletionMessage{
 			Role:    openai.ChatMessageRoleSystem,
-			Content: fmt.Sprintf(`This message describes the interaction between you, a multi layer workflow enbaled LLM, and a user. Essentially every user input is processed by an AI workflow. This means that the input is transformed and an AI assisted web search is performed to research the topic. You have the ability to provide real time, up to date results based on the web browsing data collected in the workflow. The web data will be injected into the message context. The current time and date is: %s`, time.Now()),
+			Content: fmt.Sprintf(`This message describes the interaction between you, a multi layer workflow enbaled LLM, and a user. This means that the input is transformed and an AI assisted web search is performed to research the topic. You have the ability to provide real time, up to date results based on the web browsing data collected in the workflow. The current time and date is: %s. Your knowledge cutoff: %s`, time.Now(), time.Now()),
 		})
 		modifiedMessages = append(modifiedMessages, openai.ChatCompletionMessage{
 			Role:    openai.ChatMessageRoleSystem,
 			Content: systemMsg,
 		})
-		if userLastMsgIdx != 0 {
+		if userLastMsgIdx != -1 {
 			modifiedMessages[userLastMsgIdx] = newUserMsg
 		}
 		resp := getChatCompletion(modifiedMessages, client, openai.GPT3Dot5Turbo, layerOptions.MaxResponseTokens)
@@ -130,25 +132,24 @@ func specifyPrompt(
 ) openai.ChatCompletionMessage {
 	//simplify question
 	specifyPrompt := fmt.Sprintf(`
-		You are a custodial layer of a larger AI workflow. You do not answer or address the user's prompt. Your following response should clarify, translate, and transcribe a user's input to then be used to prompt an LLM.
+		You are a custodial layer of a larger AI workflow. 
+		Current time: %s 
+		Max Response Tokens: 50
+		You do not answer or address the user's prompt. Your following response should clarify, translate, and transcribe a user's input to then be used to prompt an LLM.
 		Your response's goal:
-		- evaluate the user's input and transcribe the user's input into a specified version optimized to be answewred by another LLM (the last workflow layer)
-		- mirror and immitate the user's intent to reciece a useful answer
-		- be concise as possible with your response
+		- evaluate the user's input and transcribe the user's input into a specified version optimized to be answered by another LLM (the last workflow layer)
 		Your job: 
 		- include any information needed on your role in the workflow
 		- isolate out main topic and user's intent
+		- understand whether the request is an exclamation or question or otherwise, and what kind of response is warranted
 		- present the steps an LLM with ability to browse the internet might take to address the user input prompt's needs. 
 		- include a call to action for an LLM to optimally respond to the user
-		- be concise
 		- use second person to refer to the next LLM (ex: you should xyz)
 		- use third person to refer to the user (ex: the user wants to know x)
 		Your response should never:
-		- answer the question
-		- respond to the user
-		- address the user (they will never see your response)
+		- address the user at all (they will never see your response)
 		- add conversational commentary
-		- make the user's input confusing for the next layer`)
+		- make the user's input confusing for the next layer`, time.Now())
 
 	specifyHistory := []openai.ChatCompletionMessage{}
 	if prevUserMsg != (openai.ChatCompletionMessage{}) {
@@ -162,7 +163,7 @@ func specifyPrompt(
 		openai.ChatCompletionMessage{Role: openai.ChatMessageRoleUser,
 			Content: userMsg.Content,
 		})
-	specifiedMsgResponse := getChatCompletion(specifyHistory, client, openai.GPT3Dot5Turbo, 500)
+	specifiedMsgResponse := getChatCompletion(specifyHistory, client, openai.GPT3Dot5Turbo, 50)
 	specifiedMsgContent := fmt.Sprintf("%s The user's real input: \nUser Input: %s", specifiedMsgResponse.Choices[0].Message.Content, userMsg.Content)
 	newUserMsg := openai.ChatCompletionMessage{
 		Role:    userMsg.Role,
@@ -176,7 +177,10 @@ func getSearchQueryString(input string, client *openai.Client) string {
 		Your job:
 		- create a search query to help gather research that will aid responding to the user's prompt
 		- only respond with a search engine ready query phrase
+		- be abstract and prefer to create a query that will match results
+		- be broad, adjectives are specific 
 		Do not:
+		- use "site:" parameter
 		- use quotes
 		- make your search too convoluted
 		- respond with anything but the query itself
@@ -271,8 +275,18 @@ func duckScrape(query string, numResults int) (string, error) {
 		return "", err
 	}
 	resultsSelect := doc.Find(".result")
-	resultsSelect.Nodes = resultsSelect.Nodes[:numResults]
-	pageContent := resultsSelect.Text()
+	if numResults > len(resultsSelect.Nodes) {
+		numResults = len(resultsSelect.Nodes)
+	}
+	resultsSelect.Nodes = resultsSelect.Nodes[:numResults-1]
+
+	pageContent := ""
+	resultsSelect.Each(func(i int, s *goquery.Selection) {
+		if i == numResults {
+			return
+		}
+		pageContent += fmt.Sprintf("\n%d. %s\n", i+1, s.Text())
+	})
 	re := regexp.MustCompile(`(\s)+`)
 	pageContent = re.ReplaceAllString(pageContent, " ")
 	return pageContent, nil
