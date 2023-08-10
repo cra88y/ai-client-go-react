@@ -3,10 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
-	goquery "github.com/PuerkitoBio/goquery"
-	fiber "github.com/gofiber/fiber/v2"
-	cors "github.com/gofiber/fiber/v2/middleware/cors"
-	openai "github.com/sashabaranov/go-openai"
+	"github.com/PuerkitoBio/goquery"
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/sashabaranov/go-openai"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -29,13 +30,19 @@ type CompletionRequest struct {
 	LayerOptions LayerOptions                   `json:"layerOptions"`
 }
 
+// logger middleware that logs all requests
+func logger(c *fiber.Ctx) error {
+	log.Println(c)
+	return c.Next()
+}
+
 func main() {
 	app := fiber.New()
 	app.Use(cors.New(cors.Config{
 		AllowOrigins: "*",
 	}))
+	app.Use(logger)
 	app.Post("/ai", func(c *fiber.Ctx) error {
-		log.Print(c)
 		var reqBody CompletionRequest
 		if err := c.BodyParser(&reqBody); err != nil {
 			return err
@@ -47,6 +54,8 @@ func main() {
 		userLastMsg := openai.ChatCompletionMessage{}
 		userLastMsgIdx := -1
 		userPrevMsg := openai.ChatCompletionMessage{}
+
+		//get user last message and user previous message
 		for i := msgsCount - 1; i >= 0; i-- {
 			msg := reqBody.Messages[i]
 			if userLastMsg == (openai.ChatCompletionMessage{}) {
@@ -89,6 +98,7 @@ func main() {
 			searchResults = processSearchResults(searchResults, newUserMsg.Content, client)
 			log.Println("processed search results: ", searchResults)
 		}
+
 		//answering layer
 		systemMsg := fmt.Sprintf(`You are the final layer in an AI workflow.
 		Current time: %s
@@ -122,7 +132,10 @@ func main() {
 		resp := getChatCompletion(modifiedMessages, client, openai.GPT3Dot5Turbo, layerOptions.MaxResponseTokens)
 		return c.JSON(resp)
 	})
-	app.Listen(":3000")
+	err := app.Listen(":3000")
+	if err != nil {
+		log.Println(err)
+	}
 }
 
 func specifyPrompt(
@@ -131,7 +144,7 @@ func specifyPrompt(
 	prevUserMsg openai.ChatCompletionMessage,
 ) openai.ChatCompletionMessage {
 	//simplify question
-	specifyPrompt := fmt.Sprintf(`
+	prompt := fmt.Sprintf(`
 		You are a custodial layer of a larger AI workflow. 
 		Current time: %s 
 		Max Response Tokens: 50
@@ -151,14 +164,14 @@ func specifyPrompt(
 		- add conversational commentary
 		- make the user's input confusing for the next layer`, time.Now())
 
-	specifyHistory := []openai.ChatCompletionMessage{}
+	var specifyHistory []openai.ChatCompletionMessage
 	if prevUserMsg != (openai.ChatCompletionMessage{}) {
 		log.Println("appending prevUserMsg")
 		specifyHistory = append(specifyHistory, prevUserMsg)
 	}
 	specifyHistory = append(specifyHistory,
 		openai.ChatCompletionMessage{Role: openai.ChatMessageRoleSystem,
-			Content: specifyPrompt,
+			Content: prompt,
 		},
 		openai.ChatCompletionMessage{Role: openai.ChatMessageRoleUser,
 			Content: userMsg.Content,
@@ -234,20 +247,6 @@ func getChatCompletion(messages []openai.ChatCompletionMessage, client *openai.C
 	}
 	return resp
 }
-func getCompletion(prompt string, client *openai.Client, model string, maxTokens int) openai.CompletionResponse {
-	resp, err := client.CreateCompletion(
-		context.Background(),
-		openai.CompletionRequest{
-			Model:     model,
-			Prompt:    prompt,
-			MaxTokens: maxTokens,
-		},
-	)
-	if err != nil {
-		log.Printf("Error: getCompletion()\n%v\n", err)
-	}
-	return resp
-}
 
 // duckduckgo scraping
 func duckScrape(query string, numResults int) (string, error) {
@@ -264,7 +263,12 @@ func duckScrape(query string, numResults int) (string, error) {
 		fmt.Println("Error sending HTTP request:", err)
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err = Body.Close()
+		if err != nil {
+			fmt.Println("Error closing HTTP response body:", err)
+		}
+	}(resp.Body)
 	if resp.StatusCode != http.StatusOK {
 		log.Println("Error getSearchContents() status code: ", resp.StatusCode)
 		return "", err
@@ -292,7 +296,22 @@ func duckScrape(query string, numResults int) (string, error) {
 	return pageContent, nil
 }
 
-// really dirty google scraping with goquery BUT HEY IT WORKED
+//func getCompletion(prompt string, client *openai.Client, model string, maxTokens int) openai.CompletionResponse {
+//	resp, err := client.CreateCompletion(
+//		context.Background(),
+//		openai.CompletionRequest{
+//			Model:     model,
+//			Prompt:    prompt,
+//			MaxTokens: maxTokens,
+//		},
+//	)
+//	if err != nil {
+//		log.Printf("Error: getCompletion()\n%v\n", err)
+//	}
+//	return resp
+//}
+
+// dirty google scraping with goquery
 // func getSearchContents(query string) (string, error) {
 // 	sourceUrl := fmt.Sprintf("https://www.google.com/search?q=%s", url.QueryEscape(query))
 // 	client := &http.Client{}

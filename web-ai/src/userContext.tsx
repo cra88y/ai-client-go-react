@@ -4,16 +4,16 @@ import { useState, useEffect } from 'preact/hooks';
 import { useCookies } from 'react-cookie';
 import { Message } from './types/Message';
 
-interface UserContext {
+interface iUserContext {
   apiKey: string;
-  setApiKey: (apiKey: string) => void;
+  setApiKey: (apiKey: string) => void
   threads: { [index: number]: Message[] };
   setThreads: (threads: { [index: number]: Message[] }) => void;
   currThread: number;
   setCurrThread: (currThread: number) => void;
 }
 
-export const UserContext = createContext<UserContext>({} as UserContext);
+export const UserContext = createContext({} as iUserContext);
 
 export const UserProvider: FunctionComponent = ({ children }) => {
   const [apiKey, setApiKey] = useState('');
@@ -22,22 +22,23 @@ export const UserProvider: FunctionComponent = ({ children }) => {
   const [cookies, setCookies] = useCookies(['threads']);
 
   useEffect(() => {
-    setCookies('threads', threads, { path: '/' });
+    setCookies();
   }, [threads[currThread]]);
 
   useEffect(() => {
-    setThreads(cookies.threads);
+    setThreads(
+        cookies.threads ? cookies.threads : {}
+    );
   }, []);
-
   return (
     <UserContext.Provider
       value={{
-        apiKey,
-        setApiKey,
-        threads,
-        setThreads,
-        currThread,
-        setCurrThread,
+          apiKey,
+          setApiKey,
+          threads,
+          setThreads,
+          currThread,
+          setCurrThread
       }}
     >
       {children}

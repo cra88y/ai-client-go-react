@@ -2,13 +2,8 @@ import { useContext, useEffect} from 'preact/hooks';
 import { UserContext } from '../userContext';
 import { Thread } from './Thread';
 import { QueryBox } from './QueryBox';
-import { FunctionComponent } from 'preact';
 
-interface HomeProps {
-  id: number;
-}
-
-export const Home: FunctionComponent<HomeProps> = ({ id }) => {
+export const Home= ({ id }) => {
   const { setCurrThread, currThread, threads } = useContext(UserContext);
 
   useEffect(() => {
