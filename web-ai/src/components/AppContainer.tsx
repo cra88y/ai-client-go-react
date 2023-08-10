@@ -1,4 +1,4 @@
-import { FunctionComponent } from 'preact';
+import {FunctionComponent} from 'preact';
 import { ThreadsPanel } from './ThreadsPanel';
 import { Home } from './Home';
 import { Footer } from './Footer';
@@ -10,10 +10,10 @@ export const AppContainer: FunctionComponent = () => {
     <div className="client-container">
       <ThreadsPanel />
       <Router>
-        <Route path="/" component={Home} />
+         <Route path="/" component={Home} />
         <Route path="/threads/:id" component={Home} />
       </Router>
-  </div>
+      </div>
       <Footer />
     </>
   );

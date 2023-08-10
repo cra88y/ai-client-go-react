@@ -7,7 +7,7 @@ import { useCookies } from 'react-cookie';
 import Markdown from 'preact-markdown';
 import { ChangeEvent } from 'preact/compat';
 interface LayerOptions {
-	specifyPrompt        :boolean;
+	prompt        :boolean;
 	generateSearchTerm   :boolean;
 	search               :boolean;
 	searchResultsCount   :number;
@@ -139,7 +139,7 @@ function QueryBox() {
   } = useAi();
   const [inputText, setInputText] = useState('');
   const [options, setOptions] = useState({
-    specifyPrompt: true,
+    prompt: true,
     search: true,
     generateSearchTerm: true,
     searchResultsCount: 6,
@@ -209,8 +209,8 @@ function QueryBox() {
           Specify Prompt:
           <input
             type="checkbox"
-            name="specifyPrompt"
-            checked={options.specifyPrompt}
+            name="prompt"
+            checked={options.prompt}
             onChange={handleInputChange}
           />
         </label>
